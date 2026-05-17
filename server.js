@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import register from "./src/routes/registrationRoute.js";
+import register from "./src/routes/entryRoute.js";
 import helmet from "helmet";
 import morgan from "morgan";
 
