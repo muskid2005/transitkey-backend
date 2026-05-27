@@ -67,19 +67,34 @@ export const userRegister = async (req, res) => {
       expiresIn: "1h",
     });
 
+    const isProduction = process.env.NODE_ENV === "production";
     const refreshPayload = { user_id: createUser.id };
     const refreshToken = jwt.sign(refreshPayload, process.env.REFRESH_SECRET, {
-      expiresIn: "30d",
+      expiresIn: "7d",
+    });
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "strict" : "lax",
+      maxAge: 10 * 60 * 1000,
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "strict" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(201).json({
       message: "Success",
-      accessToken: accessToken,
-      refreshToken: refreshToken,
       user: {
         email: createUser.email || null,
         number: createUser.phone || null,
         name: createUser.client_name,
+        role: createUser.role,
+        id: createUser.id,
       },
     });
   } catch (error) {
@@ -112,20 +127,39 @@ export const userLogin = async (req, res) => {
       return res.status(401).json({ message: "Invalid Credentials" });
     }
 
+    const isProduction = process.env.NODE_ENV === "production";
     const payload = { user_id: userExist[0].id, user_role: userExist[0].role };
     const refreshPayload = { user_id: userExist[0].id };
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
     const refreshToken = jwt.sign(refreshPayload, process.env.REFRESH_SECRET, {
-      expiresIn: "30d",
+      expiresIn: "7d",
+    });
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "strict" : "lax",
+      maxAge: 10 * 60 * 1000,
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "strict" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({
       message: "Success",
-      name: userExist[0].client_name,
-      accessToken: accessToken,
-      refreshToken: refreshToken,
+      user: {
+        email: userExist[0].email || null,
+        number: userExist[0].phone || null,
+        name: userExist[0].client_name,
+        role: userExist[0].role,
+        id: userExist[0].id,
+      },
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });

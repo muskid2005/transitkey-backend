@@ -1,9 +1,9 @@
 import express from "express";
-import { newToken } from "../controllers/refeshToken.js";
 import { verifyUser } from "../middlewares/auth.js";
 
 const router = express.Router();
+import { report } from "../controllers/report.js";
 
-router.post("/api/token", verifyUser, newToken);
+router.post("/api/report", verifyUser, report);
 
 export default router;
