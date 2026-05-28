@@ -30,6 +30,10 @@ app.get("/", (req, res) => {
   res.json({ message: "yellow" });
 });
 
+app.get("/health", (req, res) => {
+  res.send("k");
+});
+
 app.use("/auth", entry);
 app.use("/refresh", refresh);
 app.use("/logout", logout);

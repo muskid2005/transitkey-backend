@@ -10,11 +10,12 @@ export const report = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { name, title, message, type } = req.body;
+    const { image, cartegory, message, report_type, location, location_name } =
+      req.body;
 
     const { data: currentTrip, error: tripError } = await supabase
       .from("trips")
-      .select("user_id, driver_id, park_id")
+      .select("id, driver_id, park_id, vehicle_id")
       .eq("user_id", decoded.user_id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -30,7 +31,7 @@ export const report = async (req, res) => {
 
     const { data: driver, error: driverError } = await supabase
       .from("users")
-      .select("id, client_name")
+      .select("client_name")
       .eq("id", currentTrip.driver_id)
       .limit(1);
 
@@ -38,27 +39,32 @@ export const report = async (req, res) => {
       return res.status(500).json({ error: driverError.message });
     }
 
-    const { data: notification, error: notificationError } = await supabase
+    if (!driver) {
+      return res.status(404).json({ message: "no driver found" });
+    }
+
+    const { data: report, error: reportError } = await supabase
       .from("reports")
       .insert([
         {
-          title: title,
-          message: message,
-          type: type,
           user_id: decoded.user_id,
-          role: decoded.user_role,
-          reference_id: currentTrip.id,
+          driver_id: currentTrip.driver_id,
+          vehicle_id: currentTrip.vehicle_id,
+          park_id: currentTrip.park_id,
+          trip_id: currentTrip.trip_id,
+          description: message,
+          report_type: report_type,
+          cartegory: cartegory,
+          location: location || null,
+          location_name: location_name || null,
+          image_url: img_url || null,
         },
       ])
       .select()
       .single();
 
     res.status(201).json({
-      driver: driver[0].client_name,
-      name: name,
-      title: notification.title,
-      message: notification.message,
-      type: notification.type,
+      message: "Report submitted successfully",
     });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
