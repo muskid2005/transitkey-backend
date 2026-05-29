@@ -4,6 +4,6 @@ import { trip } from "../controllers/trip.js";
 
 const router = express.Router();
 
-router.post("/api/trip", verifyUser, trip);
+router.post("/trip", verifyUser, trip);
 
 export default router;

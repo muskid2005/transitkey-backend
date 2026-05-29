@@ -4,11 +4,11 @@ import { supabase } from "../lib/supabase.js";
 
 export const report = async (req, res) => {
   try {
-    const decoded = jwt.verify(req.cookies.accessToken, process.env.JWT_SECRET);
+    // const decoded = jwt.verify(req.cookies.accessToken, process.env.JWT_SECRET);
 
-    if (!decoded) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    // if (!decoded) {
+    //   return res.status(401).json({ message: "Unauthorized" });
+    // }
 
     const { image, cartegory, message, report_type, location, location_name } =
       req.body;
@@ -59,9 +59,11 @@ export const report = async (req, res) => {
           location_name: location_name || null,
           image_url: img_url || null,
         },
-      ])
-      .select()
-      .single();
+      ]);
+
+    if (reportError) {
+      return res.status(500).json({ error: reportError.message });
+    }
 
     res.status(201).json({
       message: "Report submitted successfully",

@@ -10,6 +10,8 @@ import logout from "./src/routes/exitRoute.js";
 import refresh from "./src/routes/refreshTokenRoute.js";
 import report from "./src/routes/reportRoute.js";
 import trip from "./src/routes/tripRoute.js";
+import park from "./src/routes/parkRoute.js";
+import code from "./src/routes/codeRoute.js";
 
 dotenv.config();
 
@@ -34,12 +36,14 @@ app.get("/health", (req, res) => {
   res.send("k");
 });
 
-app.use("/auth", entry);
-app.use("/refresh", refresh);
-app.use("/logout", logout);
-app.use("/notification", report);
-// app.use("/update", notification);
-app.use("/transport", trip);
+app.use("/api", entry);
+app.use("/api", refresh);
+app.use("/api", logout);
+app.use("/api", report);
+// app.use("/api", notification);
+app.use("/api", trip);
+app.use("/api", park);
+app.use("/api", code);
 
 app.listen(PORT, () =>
   console.log(`server running on http://localhost:${PORT}`),
