@@ -7,7 +7,7 @@ dotenv.config();
 
 export const userRegister = async (req, res) => {
   try {
-    const { name, email, number, password } = req.body;
+    const { name, email, number, password, role } = req.body;
 
     const { data: existingNumber, error: existingNumberError } = await supabase
       .from("users")
@@ -45,16 +45,20 @@ export const userRegister = async (req, res) => {
 
     const protectedPassword = await argon2.hash(password);
 
+    const client_info = {
+      client_name: name,
+      email: email,
+      phone: number,
+      password: protectedPassword,
+    };
+
+    if (role) {
+      client_info.role = role;
+    }
+
     const { data: createUser, error } = await supabase
       .from("users")
-      .insert([
-        {
-          client_name: name,
-          email: email,
-          phone: number,
-          password: protectedPassword,
-        },
-      ])
+      .insert([client_info])
       .select()
       .single();
 
