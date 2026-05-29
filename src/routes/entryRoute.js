@@ -12,7 +12,7 @@ import {
 const router = express.Router();
 
 router.post(
-  "/api/register",
+  "/auth/register",
   emailValidation,
   passswordValidation,
   numberValidation,
@@ -21,7 +21,7 @@ router.post(
   userRegister,
 );
 router.post(
-  "/api/login",
+  "/auth/login",
   passswordValidation,
   numberValidation,
   validateInput,

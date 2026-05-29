@@ -4,6 +4,6 @@ import { verifyUser } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-router.post("/api/token", verifyUser, newToken);
+router.post("/token", verifyUser, newToken);
 
 export default router;

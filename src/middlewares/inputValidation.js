@@ -15,7 +15,7 @@ export const numberValidation = body("number")
   .withMessage("phone number is required");
 
 export const nameValidation = body("name")
-  .isLength({ min: 2 })
+  .isLength({ min: 5 })
   .withMessage("name must be between 2 and 200 characters");
 
 export const validateInput = (req, res, next) => {
