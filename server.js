@@ -11,6 +11,7 @@ import refresh from "./src/routes/refreshTokenRoute.js";
 import report from "./src/routes/reportRoute.js";
 import trip from "./src/routes/tripRoute.js";
 import park from "./src/routes/parkRoute.js";
+import code from "./src/routes/codeRoute.js";
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ app.use("/api", report);
 // app.use("/api", notification);
 app.use("/api", trip);
 app.use("/api", park);
+app.use("/api", code);
 
 app.listen(PORT, () =>
   console.log(`server running on http://localhost:${PORT}`),

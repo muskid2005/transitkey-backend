@@ -7,7 +7,31 @@ dotenv.config();
 
 export const userRegister = async (req, res) => {
   try {
-    const { name, email, number, password, role } = req.body;
+    const { name, email, number, password, code } = req.body;
+
+    let role = "user";
+
+    if (code) {
+      const { data: codeData, error: codeDataError } = await supabase
+        .from("refrence_code")
+        .select("id")
+        .eq("is_used", false)
+        .eq("code", code)
+        .limit(1)
+        .maybeSingle();
+
+      if (codeDataError) {
+        return res.status(500).json({ error: codeDataError.message });
+      }
+
+      if (!codeData) {
+        return res
+          .status(400)
+          .json({ message: "Invalid or expired reference code." });
+      }
+
+      role = "driver";
+    }
 
     const { data: existingNumber, error: existingNumberError } = await supabase
       .from("users")
@@ -45,20 +69,15 @@ export const userRegister = async (req, res) => {
 
     const protectedPassword = await argon2.hash(password);
 
-    const client_info = {
-      client_name: name,
-      email: email,
-      phone: number,
-      password: protectedPassword,
-    };
-
-    if (role) {
-      client_info.role = role;
-    }
-
     const { data: createUser, error } = await supabase
       .from("users")
-      .insert([client_info])
+      .insert({
+        client_name: name,
+        email: email,
+        phone: number,
+        password: protectedPassword,
+        role: role,
+      })
       .select()
       .single();
 
@@ -66,7 +85,26 @@ export const userRegister = async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    const payload = { user_id: createUser.id, user_role: createUser.role };
+    const { data: updateCodeData, error: updateCodeDataError } = await supabase
+      .from("refrence_code")
+      .update([
+        {
+          used_by: createUser.id,
+          user_name: createUser.client_name,
+          is_used: true,
+        },
+      ])
+      .eq("code", code);
+
+    if (updateCodeDataError) {
+      return res.status(500).json({ error: updateCodeDataError.message });
+    }
+
+    const payload = {
+      user_id: createUser.id,
+      user_name: createUser.client_name,
+      user_role: createUser.role,
+    };
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
@@ -132,7 +170,11 @@ export const userLogin = async (req, res) => {
     }
 
     const isProduction = process.env.NODE_ENV === "production";
-    const payload = { user_id: userExist[0].id, user_role: userExist[0].role };
+    const payload = {
+      user_id: userExist[0].id,
+      user_name: userExist[0].client_name,
+      user_role: userExist[0].role,
+    };
     const refreshPayload = { user_id: userExist[0].id };
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: "1h",
