@@ -13,6 +13,7 @@ import trip from "./src/routes/tripRoute.js";
 import park from "./src/routes/parkRoute.js";
 import code from "./src/routes/codeRoute.js";
 import vehicle from "./src/routes/vehicleRoute.js";
+import route from "./src/routes/routeRoute.js";
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use("/api", trip);
 app.use("/api", park);
 app.use("/api", code);
 app.use("/api", vehicle);
+app.use("/api", route);
 
 app.listen(PORT, () =>
   console.log(`server running on http://localhost:${PORT}`),
