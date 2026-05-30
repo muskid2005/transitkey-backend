@@ -24,8 +24,8 @@ export const parkRegister = async (req, res) => {
       });
     }
 
-    if (existingPark && existingPark.length > 0) {
-      return res.status(409).json({ message: "User Already Exist" });
+    if (existingPark) {
+      return res.status(409).json({ message: "Park name Already Exist" });
     }
 
     const { data: createPark, error: createParkError } = await supabase
