@@ -79,7 +79,9 @@ export const getDriver = async (req, res) => {
     if (DriverError)
       return res.status(500).json({ error: DriverError.message });
 
-    res.status(200).json({ message: "success", data: driverData });
+    res
+      .status(200)
+      .json({ message: "success", count: driverData.length, data: driverData });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
