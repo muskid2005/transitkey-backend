@@ -1,6 +1,10 @@
 export function codeGenerator() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const chars =
+    "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let prefix = "";
+  let mid1 = "";
+  let mid2 = "";
+  let mid3 = "";
   let suffix = "";
 
   for (let i = 0; i < 2; i++) {
@@ -11,11 +15,19 @@ export function codeGenerator() {
     suffix += chars.charAt(Math.floor(Math.random() * chars.length));
   }
 
-  const num = Math.floor(Math.random() * 1000)
-    .toString()
-    .padStart(3, "0");
+  for (let i = 0; i < 2; i++) {
+    mid1 += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
 
-  const fullCode = `${prefix}${num}${suffix}`;
+  for (let i = 0; i < 2; i++) {
+    mid2 += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  for (let i = 0; i < 2; i++) {
+    mid3 += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  const fullCode = `TKC-${prefix}${mid1}${mid2}${mid3}${suffix}`;
 
   return fullCode;
 }

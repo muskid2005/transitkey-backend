@@ -15,6 +15,10 @@ export const verifyUser = (req, res, next) => {
 
     req.user = decoded;
 
+    if (decoded.user_role !== "user") {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     next();
   } catch (error) {
     return res.status(401).json({ message: "invalid token" });
