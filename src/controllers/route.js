@@ -162,3 +162,44 @@ export const updateRoute = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+export const getAllRoutes = async (req, res) => {
+  try {
+    const { data: routesData, error: routesError } = await supabase
+      .from("routes")
+      .select(
+        `
+        id,
+        destination,
+        standard_fare,
+        created_at,
+        parks (
+          state_located,
+          park_location
+        )
+      `,
+      )
+      .order("destination", { ascending: true });
+
+    if (routesError) {
+      return res.status(500).json({ error: routesError.message });
+    }
+
+    const formattedRoutes = routesData.map((route) => ({
+      route_id: route.id,
+      destination: route.destination,
+      standard_fare: route.standard_fare,
+      starting_point: {
+        state: route.parks?.state_located || "Unknown State",
+        park_name: route.parks?.park_location || "Unknown Park Location",
+      },
+    }));
+
+    return res.status(200).json({
+      count: formattedRoutes.length,
+      routes: formattedRoutes,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};

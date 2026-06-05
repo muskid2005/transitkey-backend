@@ -16,7 +16,7 @@ export const numberValidation = body("number")
 
 export const nameValidation = body("name")
   .isLength({ min: 5 })
-  .withMessage("name must be between 2 and 200 characters");
+  .withMessage("name must be between 5 and 20 characters");
 
 export const validateInput = (req, res, next) => {
   const errors = validationResult(req);

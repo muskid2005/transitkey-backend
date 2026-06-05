@@ -9,11 +9,12 @@ import entry from "./src/routes/entryRoute.js";
 import logout from "./src/routes/exitRoute.js";
 import refresh from "./src/routes/refreshTokenRoute.js";
 import report from "./src/routes/reportRoute.js";
-import trip from "./src/routes/tripRoute.js";
+import transport from "./src/routes/transportRoute.js";
 import park from "./src/routes/parkRoute.js";
 import code from "./src/routes/codeRoute.js";
 import vehicle from "./src/routes/vehicleRoute.js";
 import route from "./src/routes/routeRoute.js";
+import driver from "./src/routes/driverRoute.js";
 
 dotenv.config();
 
@@ -43,11 +44,12 @@ app.use("/api", refresh);
 app.use("/api", logout);
 app.use("/api", report);
 // app.use("/api", notification);
-app.use("/api", trip);
+app.use("/api", transport);
 app.use("/api", park);
 app.use("/api", code);
 app.use("/api", vehicle);
 app.use("/api", route);
+app.use("/api", driver);
 
 app.listen(PORT, () =>
   console.log(`server running on http://localhost:${PORT}`),
