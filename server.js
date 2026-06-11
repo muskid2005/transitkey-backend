@@ -15,6 +15,7 @@ import code from "./src/routes/codeRoute.js";
 import vehicle from "./src/routes/vehicleRoute.js";
 import route from "./src/routes/routeRoute.js";
 import driver from "./src/routes/driverRoute.js";
+import vehicleAssignment from "./src/routes/vehicleAssignmentRoute.js";
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use("/api", code);
 app.use("/api", vehicle);
 app.use("/api", route);
 app.use("/api", driver);
+app.use("/api", vehicleAssignment);
 
 app.listen(PORT, () =>
   console.log(`server running on http://localhost:${PORT}`),
