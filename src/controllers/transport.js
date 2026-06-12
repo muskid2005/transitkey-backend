@@ -1,123 +1,183 @@
 import { supabase } from "../lib/supabase.js";
 
-const DEFAULT_BUS_CAPACITY = 14;
-
-export const bookSeat = async (req, res) => {
+export const createBooking = async (req, res) => {
   try {
-    const { route_id, seat_number } = req.body;
-    const passengerId = req.user.user_id;
+    const { user_id, user_role } = req.user;
+    const { route_id, seat_quantity } = req.body;
 
-    const seatsRequested = parseInt(seat_number, 10);
-
-    if (!route_id || !seatsRequested || seatsRequested < 1) {
+    if (user_role !== "user") {
       return res
-        .status(400)
-        .json({
-          message: "Route ID and a valid number of seats are required.",
-        });
+        .status(403)
+        .json({ message: "Only regular users can book passenger seats." });
     }
 
-    let tripId;
-    let targetTrip;
+    if (!route_id || !seat_quantity || seat_quantity < 1) {
+      return res
+        .status(400)
+        .json({ message: "Invalid route_id or seat quantity requested." });
+    }
 
-    const { data: existingTrip, error: tripFindError } = await supabase
+    const { data: route, error: routeError } = await supabase
+      .from("routes")
+      .select("park_id, standard_fare, capacity")
+      .eq("id", route_id)
+      .single();
+
+    if (routeError || !route) {
+      return res
+        .status(404)
+        .json({ message: "Requested route does not exist in database." });
+    }
+
+    const { data: park, error: parkError } = await supabase
+      .from("parks")
+      .select("park_operator_id")
+      .eq("id", route.park_id)
+      .single();
+
+    if (parkError) return res.status(500).json({ error: parkError.message });
+
+    const routeCapacity = route.capacity || 14;
+    const assignedOperatorId = park?.park_operator_id;
+
+    let { data: activeTrip, error: tripFindError } = await supabase
       .from("trips")
-      .select("*")
+      .select("id, available_seats")
       .eq("route_id", route_id)
-      .eq("status", "available")
-      .gt("available_seats", 0)
-      .order("created_at", { ascending: false })
+      .eq("status", "at park")
+      .limit(1)
       .maybeSingle();
 
     if (tripFindError)
       return res.status(500).json({ error: tripFindError.message });
 
-    if (existingTrip) {
-      tripId = existingTrip.id;
-      targetTrip = existingTrip;
-    } else {
-      const { data: routeData, error: routeError } = await supabase
-        .from("routes")
-        .select("park_id, standard_fare")
-        .eq("id", route_id)
-        .maybeSingle();
+    let targetTripId;
 
-      if (routeError)
-        return res.status(500).json({ error: routeError.message });
-      if (!routeData)
-        return res
-          .status(404)
-          .json({ message: "Selected travel route does not exist." });
+    if (activeTrip) {
+      if (activeTrip.available_seats < seat_quantity) {
+        return res.status(400).json({
+          message: `Insufficient seats. Only ${activeTrip.available_seats} seats remaining on the current bus.`,
+        });
+      }
+      targetTripId = activeTrip.id;
 
-      const { data: parkData } = await supabase
-        .from("parks")
-        .select("park_operator_id")
-        .eq("id", routeData.park_id)
-        .maybeSingle();
-
-      const { data: newTrip, error: createTripError } = await supabase
+      const { error: deductError } = await supabase
         .from("trips")
-        .insert([
-          {
-            park_operator_id: parkData?.park_operator_id,
-            park_id: routeData.park_id,
-            route_id: route_id,
-            vehicle_id: null,
-            driver_id: null,
-            fare: routeData.standard_fare,
-            departure_time: new Date(
-              Date.now() + 2 * 60 * 60 * 1000,
-            ).toISOString(),
-            available_seats: DEFAULT_BUS_CAPACITY,
-            status: "at park",
-          },
-        ])
+        .update({
+          available_seats: activeTrip.available_seats - seat_quantity,
+          updated_at: new Date(),
+        })
+        .eq("id", targetTripId);
+
+      if (deductError)
+        return res.status(500).json({ error: deductError.message });
+    } else {
+      const { data: newTrip, error: tripCreateError } = await supabase
+        .from("trips")
+        .insert({
+          park_id: route.park_id,
+          route_id: route_id,
+          fare: route.standard_fare,
+          available_seats: routeCapacity - seat_quantity,
+          status: "at park",
+          park_operator_id: assignedOperatorId,
+        })
         .select()
         .single();
 
-      if (createTripError)
-        return res.status(500).json({ error: createTripError.message });
-
-      tripId = newTrip.id;
-      targetTrip = newTrip;
+      if (tripCreateError)
+        return res.status(500).json({ error: tripCreateError.message });
+      targetTripId = newTrip.id;
     }
 
-    if (targetTrip.available_seats < seatsRequested) {
-      return res.status(400).json({
-        message: `Inadequate seats available. Only ${targetTrip.available_seats} seats are left on this trip.`,
-      });
-    }
-
-    const { data: bookingData, error: insertBookingError } = await supabase
+    const { data: booking, error: bookingError } = await supabase
       .from("bookings")
-      .insert([
-        {
-          trip_id: tripId,
-          user_id: passengerId,
-          seat_number: seatsRequested,
-          passenger_status: "booked",
-        },
-      ])
+      .insert({
+        trip_id: targetTripId,
+        user_id: user_id,
+        seat_number: seat_quantity,
+        passenger_status: "booked",
+      })
       .select()
       .single();
 
-    if (insertBookingError)
-      return res.status(500).json({ error: insertBookingError.message });
+    if (bookingError)
+      return res.status(500).json({ error: bookingError.message });
 
-    const updatedSeats = targetTrip.available_seats - seatsRequested;
-    const finalStatus = updatedSeats === 0 ? "in transit" : targetTrip.status;
-
-    await supabase
-      .from("trips")
-      .update({ available_seats: updatedSeats, status: finalStatus })
-      .eq("id", tripId);
+    const totalCost = route.standard_fare * seat_quantity;
 
     return res.status(201).json({
-      message: `${seatsRequested} seat(s) booked successfully!`,
-      booking: bookingData,
-      trip_id: tripId,
-      seats_left: updatedSeats,
+      message: activeTrip
+        ? "Joined existing trip group successfully!"
+        : "First customer request, trip created succesfully.",
+      booking_details: booking,
+      total_fare: totalCost,
     });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const getMyBooking = async (req, res) => {
+  try {
+    const { user_id, user_role } = req.user;
+
+    if (user_role !== "user") {
+      return res
+        .status(403)
+        .json({ message: "Access restricted to user accounts." });
+    }
+
+    const { data: booking, error: error } = await supabase
+      .from("bookings")
+      .select(
+        `
+        id,
+        seat_number,
+        passenger_status,
+        created_at,
+        trips (
+          id,
+          fare,
+          status,
+          routes (
+            id,
+            destination,
+            parks (
+              park_location
+            )
+          )
+        )
+      `,
+      )
+      .eq("user_id", user_id)
+      .not("passenger_status", "eq", "completed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) return res.status(500).json({ error: error.message });
+    if (!booking) {
+      return res
+        .status(404)
+        .json({ message: "You have no active itinerary bookings right now." });
+    }
+
+    const routeData = booking.trips?.routes;
+    const parkOrigin = routeData?.parks;
+
+    const formattedBooking = {
+      booking_id: booking.id,
+      seats_booked: booking.seat_number,
+      status: booking.passenger_status,
+      trip_status: booking.trips?.status,
+      fare_paid: booking.trips?.fare,
+      origin: parkOrigin?.park_location || "Unknown Park",
+      destination: routeData?.destination || "Unknown Destination",
+      booked_at: booking.created_at,
+    };
+
+    return res.status(200).json({ booking: formattedBooking });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -125,66 +185,56 @@ export const bookSeat = async (req, res) => {
 
 export const cancelBooking = async (req, res) => {
   try {
-    const { booking_id } = req.body;
-    const passengerId = req.user.user_id;
+    const { user_id, user_role } = req.user;
 
-    if (!booking_id) {
-      return res.status(400).json({ message: "Booking ID is required." });
+    if (user_role !== "user") {
+      return res
+        .status(403)
+        .json({ message: "Only users can cancel their bookings." });
     }
 
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking, error: findError } = await supabase
       .from("bookings")
-      .select("*")
-      .eq("id", booking_id)
-      .eq("user_id", passengerId)
+      .select("id, trip_id, seat_number, passenger_status")
+      .eq("user_id", user_id)
+      .eq("passenger_status", "booked")
       .maybeSingle();
 
-    if (bookingError)
-      return res.status(500).json({ error: bookingError.message });
+    if (findError) return res.status(500).json({ error: findError.message });
     if (!booking)
       return res
         .status(404)
-        .json({ message: "Booking record not found or unauthorized." });
+        .json({ message: "No modifiable active booking found." });
 
     const { data: trip, error: tripError } = await supabase
       .from("trips")
-      .select("status, available_seats")
+      .select("available_seats, status")
       .eq("id", booking.trip_id)
-      .maybeSingle();
+      .single();
 
-    if (tripError) return res.status(500).json({ error: tripError.message });
-    if (!trip)
-      return res
-        .status(404)
-        .json({ message: "Associated trip no longer exists." });
-
-    if (trip.status === "in transit" || trip.status === "completed") {
-      return res
-        .status(400)
-        .json({
-          message: "Cannot cancel ticket. The vehicle is already en route.",
-        });
+    if (trip && trip.status === "at park") {
+      await supabase
+        .from("trips")
+        .update({
+          available_seats: trip.available_seats + booking.seat_number,
+          updated_at: new Date(),
+        })
+        .eq("id", booking.trip_id);
     }
 
-    const { error: deleteError } = await supabase
+    const { data: cancelledData, error: cancelError } = await supabase
       .from("bookings")
-      .delete()
-      .eq("id", booking_id);
+      .update({ passenger_status: "stopped midway", updated_at: new Date() })
+      .eq("id", booking.id)
+      .select()
+      .single();
 
-    if (deleteError)
-      return res.status(500).json({ error: deleteError.message });
-
-    const restoredSeats = trip.available_seats + booking.seat_number;
-
-    await supabase
-      .from("trips")
-      .update({ available_seats: restoredSeats })
-      .eq("id", booking.trip_id);
+    if (cancelError)
+      return res.status(500).json({ error: cancelError.message });
 
     return res.status(200).json({
-      message: "Booking canceled successfully. Your seats have been restored.",
-      trip_id: booking.trip_id,
-      seats_now_available: restoredSeats,
+      message: "Booking cancelled successfully. Seats refunded to loading bay.",
+      cancelledData,
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });

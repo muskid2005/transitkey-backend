@@ -48,6 +48,25 @@ export const getAssignments = async (req, res) => {
   try {
     const { user_id, user_role } = req.user;
 
+    const { data: operatorVehicleInfo, error: operatorCheckError } =
+      await supabase
+        .from("vehicles")
+        .select("park_id")
+        .eq("park_operator_id", user_id)
+        .limit(1)
+        .maybeSingle();
+
+    if (operatorCheckError)
+      return res.status(500).json({ error: operatorCheckError.message });
+
+    if (!operatorVehicleInfo) {
+      return res.status(404).json({
+        message: "Operator is not assigned to manage any park terminal yet.",
+      });
+    }
+
+    const operatorParkId = operatorVehicleInfo.park_id;
+
     if (user_role === "operator") {
       const { data: fleet, error: fleetError } = await supabase
         .from("vehicles")
@@ -65,6 +84,7 @@ export const getAssignments = async (req, res) => {
           )
         `,
         )
+        .eq("park_id", operatorParkId)
         .not("current_driver_id", "is", null);
 
       if (fleetError)
