@@ -1,7 +1,7 @@
 
 import express from "express";
 import { verifyOperator } from "../middlewares/auth.js";
-import { assignDriverAndVehicleToTrip } from "../controllers/tripVehicle.js"
+import { assignDriverAndVehicleToTrip } from "../controllers/tripvehicle.js"
 
 const router = express.Router();
 
