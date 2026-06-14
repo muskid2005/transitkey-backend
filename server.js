@@ -5,6 +5,7 @@ import morgan from "morgan";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
+import { initBackgroundTasks } from "./src/utils/cronWorker.js"
 import entry from "./src/routes/entryRoute.js";
 import logout from "./src/routes/exitRoute.js";
 import refresh from "./src/routes/refreshTokenRoute.js";
@@ -15,6 +16,8 @@ import code from "./src/routes/codeRoute.js";
 import vehicle from "./src/routes/vehicleRoute.js";
 import route from "./src/routes/routeRoute.js";
 import driver from "./src/routes/driverRoute.js";
+import getTrips from "./src/routes/allTripsRoute.js";
+import assignVtrips from "./src/routes/assignVehicle2TripRoute.js";
 import vehicleAssignment from "./src/routes/vehicleAssignmentRoute.js";
 
 dotenv.config();
@@ -52,7 +55,10 @@ app.use("/api", vehicle);
 app.use("/api", route);
 app.use("/api", driver);
 app.use("/api", vehicleAssignment);
+app.use("/api", getTrips);
+app.use("/api", assignVtrips);
 
-app.listen(PORT, () =>
-  console.log(`server running on http://localhost:${PORT}`),
-);
+app.listen(PORT, () =>{
+  console.log(`server running on http://localhost:${PORT}`);
+  initBackgroundTasks();
+});

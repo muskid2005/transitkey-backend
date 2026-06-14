@@ -165,6 +165,20 @@ export const updateRoute = async (req, res) => {
 
 export const getAllRoutes = async (req, res) => {
   try {
+
+    const { data: parkId, error: parkErr } = await supabase
+      .from("parks")
+      .select("id")
+      .eq("park_operator_id", req.user.user_id)
+      .single()
+    
+    if(parkErr) return res.status(500).json({ error: parkErr.message });
+
+    if (!parkId)
+      return res
+        .status(404)
+        .json({ message: "No park found for this operator." });
+
     const { data: routesData, error: routesError } = await supabase
       .from("routes")
       .select(
@@ -179,6 +193,7 @@ export const getAllRoutes = async (req, res) => {
         )
       `,
       )
+      .eq("park_id", parkId.id)   
       .order("destination", { ascending: true });
 
     if (routesError) {
