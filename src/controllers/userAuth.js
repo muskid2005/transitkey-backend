@@ -106,7 +106,7 @@ export const userRegister = async (req, res) => {
 
 export const userLogin = async (req, res) => {
   try {
-    const { number, password, code } = req.body;
+    const { number, password, code, email } = req.body;
     const isProduction = process.env.NODE_ENV === "production";
 
     if (code) {
@@ -225,60 +225,118 @@ export const userLogin = async (req, res) => {
       });
     }
 
-    const { data: userExist, error: userExistError } = await supabase
-      .from("users")
-      .select("phone, email, role, id, password, client_name")
-      .eq("phone", number)
-      .maybeSingle();
+    if (number) {
+      const { data: userExist, error: userExistError } = await supabase
+        .from("users")
+        .select("phone, email, role, id, password, client_name")
+        .eq("phone", number)
+        .maybeSingle();
 
-    if (userExistError)
-      return res.status(500).json({ error: userExistError.message });
-    if (!userExist)
-      return res
-        .status(401)
-        .json({ message: "You don't have an account with us" });
+      if (userExistError)
+        return res.status(500).json({ error: userExistError.message });
+      if (!userExist)
+        return res
+          .status(401)
+          .json({ message: "You don't have an account with us" });
 
-    const passwordCheck = await argon2.verify(userExist.password, password);
-    if (!passwordCheck)
-      return res.status(401).json({ message: "Invalid Credentials" });
+      const passwordCheck = await argon2.verify(userExist.password, password);
+      if (!passwordCheck)
+        return res.status(401).json({ message: "Invalid Credentials" });
 
-    const payload = {
-      user_id: userExist.id,
-      user_name: userExist.client_name,
-      user_role: userExist.role,
-    };
-    const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-    const refreshToken = jwt.sign(
-      { user_id: userExist.id },
-      process.env.REFRESH_SECRET,
-      { expiresIn: "7d" },
-    );
+      const payload = {
+        user_id: userExist.id,
+        user_name: userExist.client_name,
+        user_role: userExist.role,
+      };
+      const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
+      const refreshToken = jwt.sign(
+        { user_id: userExist.id },
+        process.env.REFRESH_SECRET,
+        { expiresIn: "7d" },
+      );
 
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
-      maxAge: 60 * 60 * 1000,
-    });
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+      res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "strict" : "lax",
+        maxAge: 60 * 60 * 1000,
+      });
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "strict" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
 
-    return res.status(200).json({
-      message: "Success",
-      user: {
-        email: userExist.email || null,
-        number: userExist.phone || null,
-        name: userExist.client_name,
-        role: userExist.role,
-        id: userExist.id,
-      },
-    });
+      return res.status(200).json({
+        message: "Success",
+        user: {
+          email: userExist.email || null,
+          number: userExist.phone || null,
+          name: userExist.client_name,
+          role: userExist.role,
+          id: userExist.id,
+        },
+      });
+    }
+    if (email) {
+      const { data: userExist, error: userExistError } = await supabase
+        .from("users")
+        .select("phone, email, role, id, password, client_name")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (userExistError)
+        return res.status(500).json({ error: userExistError.message });
+      if (!userExist)
+        return res
+          .status(401)
+          .json({ message: "You don't have an account with us" });
+
+      const passwordCheck = await argon2.verify(userExist.password, password);
+      if (!passwordCheck)
+        return res.status(401).json({ message: "Invalid Credentials" });
+
+      const payload = {
+        user_id: userExist.id,
+        user_name: userExist.client_name,
+        user_role: userExist.role,
+      };
+      const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
+      const refreshToken = jwt.sign(
+        { user_id: userExist.id },
+        process.env.REFRESH_SECRET,
+        { expiresIn: "7d" },
+      );
+
+      res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "strict" : "lax",
+        maxAge: 60 * 60 * 1000,
+      });
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "strict" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      return res.status(200).json({
+        message: "Success",
+        user: {
+          email: userExist.email || null,
+          number: userExist.phone || null,
+          name: userExist.client_name,
+          role: userExist.role,
+          id: userExist.id,
+        },
+      });
+    }
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
