@@ -11,6 +11,7 @@ export const passswordValidation = body("password")
   .withMessage("password must be 6+ characters");
 
 export const numberValidation = body("number")
+  .optional()
   .notEmpty()
   .withMessage("phone number is required");
 
