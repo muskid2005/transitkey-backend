@@ -6,23 +6,22 @@ export const initBackgroundTasks = () => {
     try {
       const currentTime = new Date();
       const fiveMinutesFromNow = new Date(currentTime.getTime() + 5 * 60000);
-      
-      const targetDateStr = fiveMinutesFromNow.toISOString().split('T')[0];
-      const targetTimeStr = fiveMinutesFromNow.toTimeString().split(' ')[0].substring(0, 5);
 
-      console.log(`[CRON] Checking for scheduled bookings departing at: ${targetDateStr} ${targetTimeStr}`);
+      const targetDateStr = fiveMinutesFromNow.toISOString().split("T")[0];
+      const targetTimeStr = fiveMinutesFromNow
+        .toTimeString()
+        .split(" ")[0]
+        .substring(0, 5);
 
       const { data: bookings, error: fetchError } = await supabase
         .from("bookings")
         .select("id, seat_number, user_id, route_id")
         .eq("scheduled_date", targetDateStr)
-        .eq("scheduled_time", `${targetTimeStr}:00`) 
+        .eq("scheduled_time", `${targetTimeStr}:00`)
         .is("trip_id", null);
 
       if (fetchError) throw fetchError;
       if (!bookings || bookings.length === 0) return;
-
-      console.log(`[CRON] Found ${bookings.length} upcoming reservations to process.`);
 
       for (const booking of bookings) {
         const { data: route } = await supabase
@@ -43,7 +42,9 @@ export const initBackgroundTasks = () => {
           .eq("status", "at park")
           .order("created_at", { ascending: true });
 
-        let matchingTrip = activeTrips?.find(trip => trip.available_seats >= booking.seat_number);
+        let matchingTrip = activeTrips?.find(
+          (trip) => trip.available_seats >= booking.seat_number,
+        );
 
         let targetTripId;
 
@@ -51,7 +52,10 @@ export const initBackgroundTasks = () => {
           targetTripId = matchingTrip.id;
           await supabase
             .from("trips")
-            .update({ available_seats: matchingTrip.available_seats - booking.seat_number })
+            .update({
+              available_seats:
+                matchingTrip.available_seats - booking.seat_number,
+            })
             .eq("id", targetTripId);
         } else {
           const { data: newTrip } = await supabase
@@ -62,9 +66,10 @@ export const initBackgroundTasks = () => {
               fare: route.standard_fare,
               available_seats: routeCapacity - booking.seat_number,
               status: "at park",
-              park_operator_id: assignedOperatorId
+              park_operator_id: assignedOperatorId,
             })
-            .select().single();
+            .select()
+            .single();
 
           if (newTrip) targetTripId = newTrip.id;
         }
@@ -74,14 +79,12 @@ export const initBackgroundTasks = () => {
             .from("bookings")
             .update({ trip_id: targetTripId, updated_at: new Date() })
             .eq("id", booking.id);
-            
-          console.log(`[CRON] Successfully assigned Booking ${booking.id} to Trip ${targetTripId}`);
+
+          return;
         }
       }
     } catch (err) {
-      console.error("[CRON ERROR]:", err.message);
+      return;
     }
   });
-
-  console.log("Background Cron Engine fully initialized and monitoring bookings.");
 };
